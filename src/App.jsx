@@ -1,4 +1,19 @@
 import { useState, useEffect } from "react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, onSnapshot, setDoc } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCX_Zu70ralxfBJW6Oj6_ZjjmHSXzvbgD8",
+  authDomain: "wc2026-d0f64.firebaseapp.com",
+  projectId: "wc2026-d0f64",
+  storageBucket: "wc2026-d0f64.firebasestorage.app",
+  messagingSenderId: "432662443245",
+  appId: "1:432662443245:web:35ca127ebc6d4e5abfc8e4",
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const DOC_REF = doc(db, "predictions", "matches");
 
 const PLAYERS = [
   { key: "alan",  name: "Alan",  color: "#38bdf8" },
@@ -117,7 +132,9 @@ const FLAGS = {
   "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatia": "🇭🇷", "Ghana": "🇬🇭", "Panama": "🇵🇦",
 };
 
-const STORAGE_KEY = "wc2026_predictions_v2";
+function getTodayLabel() {
+  return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 function result(h, a) {
   const hg = Number(h), ag = Number(a);
@@ -135,27 +152,26 @@ function calcPoints(predH, predA, realH, realA) {
   return 0;
 }
 
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-function saveData(d) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {}
-}
-
 export default function App() {
-  const [data, setData] = useState(loadData);
+  const [data, setData] = useState({});
+  const [loading, setLoading] = useState(true);
   const [activeGroup, setActiveGroup] = useState("A");
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({});
   const [tab, setTab] = useState("matches");
 
-  useEffect(() => { saveData(data); }, [data]);
+  // Subscribe to Firestore in real-time
+  useEffect(() => {
+    const unsub = onSnapshot(DOC_REF, snap => {
+      setData(snap.exists() ? snap.data() : {});
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
 
   const groupMatches = MATCHES.filter(m => m.group === activeGroup);
+  const todayLabel = getTodayLabel();
+  const todayMatches = MATCHES.filter(m => m.date === todayLabel);
 
   function getMatch(id) { return data[id] || {}; }
 
@@ -179,7 +195,11 @@ export default function App() {
         draft.real_home, draft.real_away
       );
     });
-    setData(prev => ({ ...prev, [id]: saved }));
+    setData(prev => {
+      const next = { ...prev, [id]: saved };
+      setDoc(DOC_REF, next);
+      return next;
+    });
     setEditingId(null);
   }
 
@@ -324,6 +344,12 @@ export default function App() {
     );
   }
 
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#0f172a", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', 'Segoe UI', sans-serif", color: "#64748b", fontSize: 14 }}>
+      Loading…
+    </div>
+  );
+
   return (
     <div style={{ minHeight: "100vh", background: "#0f172a", fontFamily: "'Inter', 'Segoe UI', sans-serif", color: "#f8fafc" }}>
       {/* Header */}
@@ -361,6 +387,19 @@ export default function App() {
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px" }}>
         {tab === "matches" && (
           <>
+            {todayMatches.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
+                }}>
+                  <span style={{ fontSize: 16 }}>📅</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#f8fafc", letterSpacing: 1, textTransform: "uppercase" }}>
+                    Today's Matches
+                  </span>
+                </div>
+                {todayMatches.map(m => <MatchRow key={`today-${m.id}`} match={m} />)}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
               {Object.keys(GROUPS).map(g => (
                 <button key={g} onClick={() => setActiveGroup(g)} style={{
