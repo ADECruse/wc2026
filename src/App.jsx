@@ -111,6 +111,58 @@ const MATCHES = [
   { id: 72, group: "L", date: "Jun 27", home: "Croatia",     away: "Ghana" },
 ];
 
+const KNOCKOUTS = [
+  // Round of 32
+  { id: 73, round: "R32", date: "Jun 28", home: "South Africa",  away: "Canada",   city: "Los Angeles" },
+  { id: 74, round: "R32", date: "Jun 29", home: "Germany",       away: "Paraguay", city: "Boston" },
+  { id: 75, round: "R32", date: "Jun 29", home: "Netherlands",   away: "Morocco",  city: "Monterrey" },
+  { id: 76, round: "R32", date: "Jun 29", home: "Brazil",        away: "Japan",    city: "Houston" },
+  { id: 77, round: "R32", date: "Jun 30", home: "France",        away: "Sweden",   city: "New York/NJ" },
+  { id: 78, round: "R32", date: "Jun 30", home: "Ivory Coast",   away: "Norway",   city: "Dallas" },
+  { id: 79, round: "R32", date: "Jun 30", home: "Mexico",        away: "Ecuador",  city: "Mexico City" },
+  { id: 80, round: "R32", date: "Jul 1",  home: "England",       away: "DR Congo", city: "Atlanta" },
+  { id: 81, round: "R32", date: "Jul 1",  home: "USA",           away: "Bosnia",   city: "San Francisco" },
+  { id: 82, round: "R32", date: "Jul 1",  home: "Belgium",       away: "Senegal",  city: "Seattle" },
+  { id: 83, round: "R32", date: "Jul 2",  home: "Portugal",      away: "Croatia",  city: "Toronto" },
+  { id: 84, round: "R32", date: "Jul 2",  home: "Spain",         away: "Austria",  city: "Los Angeles" },
+  { id: 85, round: "R32", date: "Jul 2",  home: "Switzerland",   away: "Algeria",  city: "Vancouver" },
+  { id: 86, round: "R32", date: "Jul 3",  home: "Argentina",     away: "Cape Verde", city: "Miami" },
+  { id: 87, round: "R32", date: "Jul 3",  home: "Colombia",      away: "Ghana",    city: "Kansas City" },
+  { id: 88, round: "R32", date: "Jul 3",  home: "Australia",     away: "Egypt",    city: "Dallas" },
+  // Round of 16 - matchups TBD, filled in as R32 results come in
+  { id: 89, round: "R16", date: "Jul 4", home: "Winner 74", away: "Winner 77", city: "TBD" },
+  { id: 90, round: "R16", date: "Jul 4", home: "Winner 73", away: "Winner 75", city: "TBD" },
+  { id: 91, round: "R16", date: "Jul 5", home: "Winner 76", away: "Winner 78", city: "TBD" },
+  { id: 92, round: "R16", date: "Jul 5", home: "Winner 79", away: "Winner 80", city: "TBD" },
+  { id: 93, round: "R16", date: "Jul 6", home: "Winner 83", away: "Winner 84", city: "TBD" },
+  { id: 94, round: "R16", date: "Jul 6", home: "Winner 81", away: "Winner 82", city: "TBD" },
+  { id: 95, round: "R16", date: "Jul 7", home: "Winner 86", away: "Winner 88", city: "TBD" },
+  { id: 96, round: "R16", date: "Jul 7", home: "Winner 85", away: "Winner 87", city: "TBD" },
+  // Quarter-finals
+  { id: 97,  round: "QF", date: "Jul 9",  home: "Winner 89", away: "Winner 90", city: "TBD" },
+  { id: 98,  round: "QF", date: "Jul 10", home: "Winner 93", away: "Winner 94", city: "TBD" },
+  { id: 99,  round: "QF", date: "Jul 10", home: "Winner 91", away: "Winner 92", city: "TBD" },
+  { id: 100, round: "QF", date: "Jul 11", home: "Winner 95", away: "Winner 96", city: "TBD" },
+  // Semi-finals
+  { id: 101, round: "SF", date: "Jul 14", home: "Winner 97", away: "Winner 98",  city: "Dallas" },
+  { id: 102, round: "SF", date: "Jul 15", home: "Winner 99", away: "Winner 100", city: "Atlanta" },
+  // Third place + Final
+  { id: 103, round: "F3", date: "Jul 18", home: "Loser 101", away: "Loser 102", city: "Miami" },
+  { id: 104, round: "FIN", date: "Jul 19", home: "Winner 101", away: "Winner 102", city: "New York/NJ" },
+];
+
+const ROUND_LABELS = {
+  R32: "Round of 32",
+  R16: "Round of 16",
+  QF: "Quarter-finals",
+  SF: "Semi-finals",
+  F3: "3rd Place Playoff",
+  FIN: "Final",
+};
+
+const ROUND_ORDER = ["R32", "R16", "QF", "SF", "F3", "FIN"];
+
+
 const GROUP_COLORS = {
   A: "#E63946", B: "#457B9D", C: "#2D6A4F", D: "#E9C46A",
   E: "#6A0572", F: "#F4A261", G: "#264653", H: "#E76F51",
@@ -156,6 +208,7 @@ export default function App() {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeGroup, setActiveGroup] = useState("A");
+  const [activeRound, setActiveRound] = useState("R32");
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({});
   const [tab, setTab] = useState("matches");
@@ -170,8 +223,9 @@ export default function App() {
   }, []);
 
   const groupMatches = MATCHES.filter(m => m.group === activeGroup);
+  const roundMatches = KNOCKOUTS.filter(m => m.round === activeRound);
   const todayLabel = getTodayLabel();
-  const todayMatches = MATCHES.filter(m => m.date === todayLabel);
+  const todayMatches = [...MATCHES, ...KNOCKOUTS].filter(m => m.date === todayLabel);
 
   function getMatch(id) { return data[id] || {}; }
 
@@ -229,13 +283,18 @@ export default function App() {
   function MatchRow({ match }) {
     const saved = getMatch(match.id);
     const isEditing = editingId === match.id;
-    const groupColor = GROUP_COLORS[match.group];
+    const isKnockout = !!match.round;
+    const badgeColor = isKnockout ? "#475569" : GROUP_COLORS[match.group];
+    const badgeLabel = isKnockout ? ROUND_LABELS[match.round] : `GRP ${match.group}`;
     const hasResult = saved.real_home !== "" && saved.real_home !== undefined;
+    const isTbd = match.home.startsWith("Winner") || match.home.startsWith("Loser") ||
+                  match.away.startsWith("Winner") || match.away.startsWith("Loser");
 
     return (
       <div style={{
         background: "#1e293b", borderRadius: 10, marginBottom: 8,
         border: "1px solid #334155", overflow: "hidden",
+        opacity: isTbd ? 0.55 : 1,
       }}>
         {/* Header row */}
         <div style={{
@@ -244,20 +303,23 @@ export default function App() {
           borderBottom: (isEditing || (!isEditing && hasResult)) ? "1px solid #1e3a5f22" : "none",
         }}>
           <span style={{
-            background: groupColor, color: "#fff",
+            background: badgeColor, color: "#fff",
             fontSize: 10, fontWeight: 800, letterSpacing: 1,
             borderRadius: 4, padding: "2px 6px", flexShrink: 0,
-          }}>GRP {match.group}</span>
+          }}>{badgeLabel}</span>
           <span style={{ color: "#64748b", fontSize: 11, flexShrink: 0 }}>{match.date}</span>
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>
-              {FLAGS[match.home]} {match.home}
+              {FLAGS[match.home] ? `${FLAGS[match.home]} ` : ""}{match.home}
             </span>
             <span style={{ color: "#475569", fontSize: 11, fontWeight: 600 }}>vs</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>
-              {match.away} {FLAGS[match.away]}
+              {match.away}{FLAGS[match.away] ? ` ${FLAGS[match.away]}` : ""}
             </span>
           </div>
+          {isKnockout && match.city && match.city !== "TBD" && !hasResult && (
+            <span style={{ color: "#475569", fontSize: 10, flexShrink: 0 }}>{match.city}</span>
+          )}
           {hasResult && !isEditing && (
             <span style={{
               background: "#0f172a", border: "1px solid #334155",
@@ -265,16 +327,20 @@ export default function App() {
               fontSize: 13, fontWeight: 800, color: "#94a3b8", flexShrink: 0,
             }}>{saved.real_home}–{saved.real_away}</span>
           )}
+          {isTbd && !hasResult ? (
+            <span style={{ color: "#475569", fontSize: 10, fontStyle: "italic", flexShrink: 0 }}>TBD</span>
+          ) : (
           <button
             onClick={() => isEditing ? saveDraft(match.id) : startEdit(match)}
             style={{
-              background: isEditing ? groupColor : "transparent",
+              background: isEditing ? badgeColor : "transparent",
               color: isEditing ? "#fff" : "#64748b",
               border: isEditing ? "none" : "1px solid #334155",
               borderRadius: 6, padding: "4px 10px",
               fontSize: 11, fontWeight: 700, cursor: "pointer", flexShrink: 0,
             }}
           >{isEditing ? "Save" : "Edit"}</button>
+          )}
           {isEditing && (
             <button onClick={() => setEditingId(null)} style={{
               background: "transparent", color: "#64748b",
@@ -362,7 +428,7 @@ export default function App() {
             <span style={{ fontSize: 26 }}>⚽</span>
             <div>
               <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5 }}>World Cup 2026</div>
-              <div style={{ fontSize: 11, color: "#64748b", letterSpacing: 1, textTransform: "uppercase" }}>Prediction Tracker · Group Stage</div>
+              <div style={{ fontSize: 11, color: "#64748b", letterSpacing: 1, textTransform: "uppercase" }}>Prediction Tracker</div>
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
               {totals.map(p => (
@@ -371,7 +437,7 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 0, marginTop: 16 }}>
-            {["matches", "scoreboard"].map(t => (
+            {["matches", "knockouts", "scoreboard"].map(t => (
               <button key={t} onClick={() => setTab(t)} style={{
                 background: "none", border: "none", cursor: "pointer",
                 padding: "8px 16px", fontSize: 12, fontWeight: 700, letterSpacing: 0.5,
@@ -420,6 +486,22 @@ export default function App() {
               ))}
             </div>
             {groupMatches.map(m => <MatchRow key={m.id} match={m} />)}
+          </>
+        )}
+        {tab === "knockouts" && (
+          <>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+              {ROUND_ORDER.map(r => (
+                <button key={r} onClick={() => setActiveRound(r)} style={{
+                  background: activeRound === r ? "#475569" : "#1e293b",
+                  color: activeRound === r ? "#fff" : "#94a3b8",
+                  border: `1px solid ${activeRound === r ? "#475569" : "#334155"}`,
+                  borderRadius: 6, padding: "5px 10px",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.15s",
+                }}>{ROUND_LABELS[r]}</button>
+              ))}
+            </div>
+            {roundMatches.map(m => <MatchRow key={m.id} match={m} />)}
           </>
         )}
         {tab === "scoreboard" && <Scoreboard data={data} totals={totals} leaders={leaders} />}
